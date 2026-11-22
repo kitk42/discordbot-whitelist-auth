@@ -1,0 +1,42 @@
+# /etc/systemd/system/whitelist-bot.service
+# 配置手順は docs/deploy.md を参照。
+[Unit]
+Description=Discord whitelist bot for Minecraft
+Wants=network-online.target
+# 起動順のみ指定し、依存はさせない（Minecraft 停止中も申請の受け付けを続ける）
+After=network-online.target minecraft.service
+
+[Service]
+Type=simple
+User=whitelist-bot
+Group=whitelist-bot
+WorkingDirectory=/opt/discordbot-whitelist-auth
+EnvironmentFile=/etc/whitelist-bot/env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/discordbot-whitelist-auth/.venv/bin/python -m whitelist_bot
+Restart=on-failure
+RestartSec=10
+# データベースの置き場所 /var/lib/whitelist-bot（Bot が書き込める唯一の場所）
+StateDirectory=whitelist-bot
+StateDirectoryMode=0700
+UMask=0077
+
+# minecraft.service と同じ水準の制限 + 追加の制限
+NoNewPrivileges=true
+ProtectHome=true
+ProtectSystem=strict
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

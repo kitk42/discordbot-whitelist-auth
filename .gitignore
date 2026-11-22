@@ -1,0 +1,23 @@
+# Secrets / private notes
+.env
+docs/CURRENT_VM_CONFIGURATION.md
+
+# Runtime data
+data/
+*.db
+*.db-journal
+
+# Local Minecraft test server (server.jar is not redistributable under the Minecraft EULA)
+dev/minecraft/
+dev/logs/
+jar/
+server.jar
+*:Zone.Identifier
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+dist/
