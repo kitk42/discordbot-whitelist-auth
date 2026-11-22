@@ -50,23 +50,21 @@ sudo cp -p /srv/minecraft/server.properties /srv/minecraft/server.properties.bak
 sudo grep -nE '^(white-list|enforce-whitelist|enable-rcon|rcon\.port|rcon\.password)=' /srv/minecraft/server.properties
 ```
 
-RCON のパスワードを作ります。表示された値は手順 6 でも使うので控えてください。
+`server.properties` を書き換えます。RCON のパスワードはその場でランダムに作り、画面には表示しません。そのままコピーして実行できます（置き換える部分はありません）。
 
 ```bash
-openssl rand -base64 32 | tr -d '/+=' | cut -c1-32
-```
-
-`server.properties` を書き換えます。`<RCON_PASSWORD>` は、上で作った値に置き換えてください。
-
-```bash
+RCON_PASSWORD="$(openssl rand -base64 32 | tr -d '/+=' | cut -c1-32)"
 sudo sed -i \
   -e 's/^white-list=.*/white-list=true/' \
   -e 's/^enforce-whitelist=.*/enforce-whitelist=true/' \
   -e 's/^enable-rcon=.*/enable-rcon=true/' \
   -e 's/^rcon\.port=.*/rcon.port=25575/' \
-  -e 's/^rcon\.password=.*/rcon.password=<RCON_PASSWORD>/' \
+  -e "s/^rcon\.password=.*/rcon.password=${RCON_PASSWORD}/" \
   /srv/minecraft/server.properties
+unset RCON_PASSWORD
 ```
+
+> パスワードを控える必要はありません。手順 6 で `server.properties` から直接読み取ります。パスワードをチャットやメモに貼らないでください。
 
 書き換えたあとの状態を確認します。
 
@@ -74,16 +72,19 @@ sudo sed -i \
 # 値が反映されたか（パスワードは表示しない）
 sudo grep -nE '^(white-list|enforce-whitelist|enable-rcon|rcon\.port)=' /srv/minecraft/server.properties
 
+# 32 文字のパスワードが入ったか（1 と出れば OK）
+sudo grep -c '^rcon\.password=[A-Za-z0-9]\{32\}$' /srv/minecraft/server.properties
+
 # 所有者とパーミッションが変わっていないか（minecraft minecraft であること）
 sudo ls -l /srv/minecraft/server.properties
 ```
 
-Minecraft サーバーを再起動し、RCON が起動したことを確認します。
+Minecraft サーバーを再起動し、RCON が起動したことを確認します。`systemctl restart` はサーバーの起動完了を待たずに戻ってくるため、ログを追いかけて待ちます。
 
 ```bash
 sudo systemctl restart minecraft
-sudo journalctl -u minecraft -n 60 --no-pager | grep -E 'RCON running|Done \('
-# → "RCON running on 0.0.0.0:25575" が出ていれば成功
+sudo journalctl -u minecraft -f
+# → "RCON running on 0.0.0.0:25575" が出たら Ctrl+C で抜ける
 ```
 
 ## 3. RCON が外部から見えないことを確認する
@@ -133,6 +134,12 @@ readlink -f .venv/bin/python   # → /usr/bin/python3.12 であること
 ```bash
 sudo install -d -m 0750 -o root -g whitelist-bot /etc/whitelist-bot
 sudo install -m 0640 -o root -g whitelist-bot deploy/env.example /etc/whitelist-bot/env
+
+# RCON のパスワードを server.properties から書き写す（画面には表示しない）
+RCON_PASSWORD="$(sudo sed -n 's/^rcon\.password=//p' /srv/minecraft/server.properties)"
+sudo sed -i "s/^RCON_PASSWORD=.*/RCON_PASSWORD=${RCON_PASSWORD}/" /etc/whitelist-bot/env
+unset RCON_PASSWORD
+
 sudoedit /etc/whitelist-bot/env
 ```
 
@@ -145,9 +152,8 @@ sudoedit /etc/whitelist-bot/env
 | `AUTH_CHANNEL_ID` | 手順 1 で控えた ID |
 | `ADMIN_CHANNEL_ID` | 手順 1 で控えた ID |
 | `ADMIN_ROLE_ID` | 手順 1 で控えた ID |
-| `RCON_PASSWORD` | 手順 2 で作ったパスワード |
 
-`RCON_HOST`、`RCON_PORT`、`DATABASE_PATH` は、見本のままで構いません。
+`RCON_PASSWORD` は上のコマンドで書き写し済みです。`RCON_HOST`、`RCON_PORT`、`DATABASE_PATH` は、見本のままで構いません。
 
 記入したら、所有者と権限を確認します。
 
