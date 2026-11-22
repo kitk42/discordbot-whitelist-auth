@@ -212,8 +212,31 @@ GitHub に push したあと、VM で次のスクリプトを実行します。
 | `設定エラー: ... が設定されていません` | `/etc/whitelist-bot/env` の記入漏れです。 |
 | `スラッシュコマンドを登録できません` | `GUILD_ID` が間違っているか、Bot が `applications.commands` のスコープ付きで招待されていません。 |
 | 承認時に「Minecraft サーバーに接続できませんでした」 | Minecraft サーバーが止まっているか、RCON が無効です。手順 2 を確認してください。 |
-| ログに `RCON のパスワードが違います` | `server.properties` の `rcon.password` と、env ファイルの `RCON_PASSWORD` が一致していません。 |
+| 「申請の送信に失敗しました」と表示され、ログに `error code: 50001` | Bot が管理チャンネルを見られません。手順 1-3 の権限設定（チャンネルを見る・メッセージを送信・埋め込みリンク）を確認してください。カテゴリーと権限を同期している場合は、カテゴリー側も確認します。権限の変更は再起動なしで反映されます。 |
+| 「申請の送信に失敗しました」と表示され、ログに `error code: 10003` | `ADMIN_CHANNEL_ID` が間違っています。env ファイルを直して Bot を再起動してください。 |
+| ログに `RCON のパスワードが違います` | `server.properties` の `rcon.password` と、env ファイルの `RCON_PASSWORD` が一致していません。下の「RCON のパスワードが一致しないとき」を参照してください。 |
 | `status=203/EXEC` で起動しない | `.venv` がない、または `whitelist-bot` ユーザーから読めません。手順 5 の権限を確認してください。 |
+
+### RCON のパスワードが一致しないとき
+
+2 つのファイルのパスワードが一致しているかを、値を表示せずに確認します。
+
+```bash
+[ "$(sudo sed -n 's/^rcon\.password=//p' /srv/minecraft/server.properties)" = "$(sudo sed -n 's/^RCON_PASSWORD=//p' /etc/whitelist-bot/env)" ] && echo match || echo mismatch
+```
+
+- `mismatch` の場合は、env ファイルが古いままです。書き写し直して、Bot を再起動します。
+
+  ```bash
+  RCON_PASSWORD="$(sudo sed -n 's/^rcon\.password=//p' /srv/minecraft/server.properties)"
+  sudo sed -i "s/^RCON_PASSWORD=.*/RCON_PASSWORD=${RCON_PASSWORD}/" /etc/whitelist-bot/env
+  unset RCON_PASSWORD
+  sudo systemctl restart whitelist-bot
+  ```
+
+- `match` の場合は、`server.properties` を書き換えたあと Minecraft サーバーを再起動していません。`sudo systemctl restart minecraft` を実行してください。
+
+ログを確認するときは、ここに出てくるコマンドを 1 つずつ実行してください。複数のコマンドが改行なしでつながると、`echo` がパスワードを画面に表示してしまうことがあります。
 
 ## データのバックアップ
 
